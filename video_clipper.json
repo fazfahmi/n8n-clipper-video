@@ -1,0 +1,1046 @@
+{
+  "name": "My workflow 31",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        560
+      ],
+      "id": "a4f31c48-0c13-4bee-9722-b88cf52378d2",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "*.*",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1vLnbjdlmEH5neJoHRqBNOZlH1E95UFTf",
+            "mode": "list",
+            "cachedResultName": "Capcut Inputs",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1vLnbjdlmEH5neJoHRqBNOZlH1E95UFTf"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        0,
+        560
+      ],
+      "id": "5e6c1fae-8e38-41a0-b1ba-360ab950e304",
+      "name": "Search Video Files",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "4wgi8T5HkDsHmjbk",
+          "name": "GDrive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "video-filter",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "video/",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        224,
+        560
+      ],
+      "id": "2a4ca01a-307c-4007-97cf-c9daee435224",
+      "name": "Filter Video Files"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        560
+      ],
+      "id": "2562b845-f9c3-4a1e-b277-d1ac9dbb7f9e",
+      "name": "Process One by One"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        672,
+        496
+      ],
+      "id": "bacd9edd-6ee8-48f5-82bf-22c0522e3dd9",
+      "name": "Download Video",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "4wgi8T5HkDsHmjbk",
+          "name": "GDrive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/tmp/input_{{ $json.id }}.{{ $json.fileExtension }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        896,
+        640
+      ],
+      "id": "ba655ac9-2acd-488f-a6a0-0b376ce3164d",
+      "name": "Write Input File"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -i \"/tmp/input_{{ $json.id }}.{{ $json.fileExtension }}\" -c copy -map 0 -f segment -segment_time 30 -reset_timestamps 1 -segment_list \"/tmp/segments_{{ $json.id }}.txt\" \"/tmp/output_{{ $json.id }}_%03d.mp4\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        640
+      ],
+      "id": "4746bf64-7368-46ea-8b19-1a2100ab9c4b",
+      "name": "FFmpeg Split Video"
+    },
+    {
+      "parameters": {
+        "command": "=ls /tmp/output_*_*.mp4 | head -20"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        736
+      ],
+      "id": "4e9493e5-267f-47fa-9f21-cc22190d1804",
+      "name": "List Output Files"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "stdout",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        1696,
+        736
+      ],
+      "id": "90a139df-8abc-4ca3-8e3c-d7f165ebd6ee",
+      "name": "Prepare File List"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "originalFile",
+              "type": "objectValue",
+              "objectValue": "={{ $('Download Video').item.json }}"
+            },
+            {
+              "name": "outputFiles",
+              "type": "arrayValue",
+              "arrayValue": "={{ $('List Output Files').item.json.stdout.trim().split('\\n').filter(file => file.length > 0) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1920,
+        736
+      ],
+      "id": "db288afd-056b-4fed-aa91-107b113fb47f",
+      "name": "Set File Info"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        2368,
+        736
+      ],
+      "id": "3d2ed3c3-511e-4823-a452-c4ac6e5bc36f",
+      "name": "Extract Segment Info"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.filePath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2592,
+        736
+      ],
+      "id": "1673654c-b7d1-498d-bd70-c3fcb1518f49",
+      "name": "Read Segment File"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw",
+          "mode": "list",
+          "cachedResultName": "list text overlay",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2816,
+        736
+      ],
+      "id": "07f62466-48e1-4399-8db7-c2f6b4ef02f2",
+      "name": "Get Text Overlay",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gYWXAVroeyiyzRSf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Perbaikan untuk sequential text selection berdasarkan status\n// Ambil semua teks overlay dari Google Sheets\nconst overlayData = $('Get Text Overlay').all();\n\n// Filter teks yang belum digunakan (status kosong atau null)\nconst availableTexts = overlayData.filter(item => {\n  const status = item.json.status;\n  return !status || status === '' || status === null || status === undefined;\n});\n\n// Jika tidak ada teks yang tersedia, gunakan semua teks (reset cycle)\nlet selectedText;\nlet selectedTextId;\nlet selectedIndex;\n\nif (availableTexts.length === 0) {\n  // Jika semua teks sudah digunakan, mulai dari awal lagi\n  selectedText = overlayData[0]?.json.teks || 'Default Text';\n  selectedTextId = overlayData[0]?.json.id;\n  selectedIndex = 0;\n  console.log('Semua teks sudah digunakan, mengulang dari awal');\n} else {\n  // Pilih teks pertama yang tersedia (berurutan dari atas ke bawah)\n  selectedText = availableTexts[0].json.teks || 'Default Text';\n  selectedTextId = availableTexts[0].json.id;\n  \n  // Cari index asli di data lengkap untuk update status nanti\n  selectedIndex = overlayData.findIndex(item => item.json.id === selectedTextId);\n}\n\n// Extract segment number dari file path\nconst filePath = $json.filePath;\nconst segmentMatch = filePath.match(/_([0-9]+)\\.mp4$/);\nconst segmentNumber = segmentMatch ? parseInt(segmentMatch[1]) : 0;\n\n// Buat nama file output dengan overlay\nconst fileName = $json.fileName || `segment_${segmentNumber}`;\nconst outputFileName = `/tmp/overlay_${$json.originalFile.id}_${segmentNumber.toString().padStart(3, '0')}.mp4`;\n\nconsole.log(`Selected text: ${selectedText}, ID: ${selectedTextId}, Available texts: ${availableTexts.length}`);\n\nreturn {\n  json: {\n    ...items[0].json,\n    overlayText: selectedText,\n    overlayTextId: selectedTextId,\n    segmentNumber: segmentNumber,\n    outputFileName: outputFileName,\n    selectedIndex: selectedIndex\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        736
+      ],
+      "id": "56cf9ab4-96a9-40a9-80da-4136821d5674",
+      "name": "Prepare Overlay Data"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -i \"{{ $json.filePath }}\" -vf \"drawtext=text='{{ $json.overlayText.replace(/'/g, '\\'') }}':fontsize=40:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:box=1:boxcolor=black@0.5:boxborderw=5\" -c:a copy \"{{ $json.outputFileName }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3264,
+        736
+      ],
+      "id": "e7b5f15e-f988-4b45-a245-91f645b8927a",
+      "name": "Add Text Overlay"
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "id",
+              "stringValue": "={{ $json.overlayTextId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        3488,
+        736
+      ],
+      "id": "e38b10aa-abef-4088-9c06-5ae5c1dc9c8c",
+      "name": "Prepare Status Update"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw",
+          "mode": "list",
+          "cachedResultName": "list text overlay",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "used"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "teks",
+              "displayName": "teks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        3712,
+        736
+      ],
+      "id": "f3ada96c-f5e9-4427-ba83-ee7503da32e4",
+      "name": "Update Text Status",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gYWXAVroeyiyzRSf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $('Prepare Overlay Data').item.json.outputFileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3936,
+        736
+      ],
+      "id": "544b9978-3321-4b55-8bee-c7f276559ee2",
+      "name": "Read Overlay File"
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Prepare Overlay Data').item.json.fileName.split('.')[0] }}_overlay.mp4",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "10MTzQwQZeSLEGpmcHp_2fBZ2Eh4uN9yS",
+          "mode": "list",
+          "cachedResultName": "Capcut-Outputs",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/10MTzQwQZeSLEGpmcHp_2fBZ2Eh4uN9yS"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        4160,
+        736
+      ],
+      "id": "71cc1eb4-4ddf-4cf3-9f74-5a7bbe1adbdd",
+      "name": "Upload With Overlay",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "4wgi8T5HkDsHmjbk",
+          "name": "GDrive"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=rm -f \"/tmp/input_{{ $('Prepare Overlay Data').item.json.originalFile.id }}.*\" \"/tmp/output_{{ $('Prepare Overlay Data').item.json.originalFile.id }}_\"*.mp4 \"/tmp/segments_{{ $('Prepare Overlay Data').item.json.originalFile.id }}.txt\" \"{{ $('Prepare Overlay Data').item.json.outputFileName }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        4384,
+        736
+      ],
+      "id": "d9f0563c-31d5-4614-9ba2-4c768777c221",
+      "name": "Cleanup Temp Files"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-more-batches",
+              "leftValue": "={{ $('Process One by One').context.noItemsLeft }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4608,
+        816
+      ],
+      "id": "09ec808e-12e5-4d5d-b368-1239cd9eba35",
+      "name": "Check If More Files"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4832,
+        816
+      ],
+      "id": "d08323fa-70e4-45d0-ae68-05ca10f7ad60",
+      "name": "Workflow Complete"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $('FFmpeg Split Video').item.json.exitCode }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        544
+      ],
+      "id": "4959083d-08a6-44e7-87e8-9979f24f2cb4",
+      "name": "Error Handler"
+    },
+    {
+      "parameters": {
+        "errorMessage": "=Video processing error: File: {{ $json.originalFile.name }} FFmpeg Exit Code: {{ $('FFmpeg Split Video').item.json.exitCode }} Error Details: {{ $('FFmpeg Split Video').item.json.stderr }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        544
+      ],
+      "id": "94e51a25-43f1-4d6b-bf00-22d5579147b5",
+      "name": "Stop on Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform array into individual items\nconst outputFiles = $input.item.json.outputFiles;\nconst originalFile = $input.item.json.originalFile;\n\nconst items = [];\nfor (const filePath of outputFiles) {\n  items.push({\n    json: {\n      filePath: filePath,\n      originalFile: originalFile\n    }\n  });\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2144,
+        736
+      ],
+      "id": "cfd7202b-64e4-4d02-bd15-8a4091ce4fb2",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Anda adalah seorang copywriter media sosial yang ahli dalam membuat teks viral dan provokatif. Gaya bahasa Anda kasual dan persuasif, menggunakan diksi yang sering ditemukan di TikTok dan Instagram Reels",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Tugas Anda adalah membuat teks overlay untuk video promosi produk Kiyoko. Teks ini akan ditempelkan langsung di video dan harus mampu menarik perhatian audiens dengan cepat.\n\nElemen Kunci Brand Kiyoko:\n- Masalah Utama Audiens: Frustrasi dan putus asa karena masalah kulit (jerawat, flek, kulit sensitif) yang tidak kunjung selesai.\n- Solusi: \"Alam\" sebagai jawaban untuk kulit rusak.\n- USP (Unique Selling Proposition):\n  - Pemulihan kulit secara alami.\n  - Perlindungan dari bahan kimia keras (harsh chemicals).\n  - Menciptakan rasa aman dan percaya diri.\n\nInstruksi Tambahan:\n- Buatlah teks yang singkat, padat, dan langsung menyentuh emosi audiens.\n- Gunakan gaya bahasa yang mirip dengan contoh yang kamu berikan sebelumnya, seperti:\n  \"Lengah dikit lacera lagi harga ambyar sepaket gini cuma segini harganya.\"\n  \"Definisi sabun yang diem aja tapi hasilnya gong bgt untk mudari bekas luka...\"\n- Fokus pada perbandingan antara \"masalah\" dan \"solusi alami.\"\n- Sertakan emoji yang relevan untuk memperkuat pesan dan menarik perhatian visual.\n- Batasi teks maksimal 100 karakter (termasuk spasi dan emoji).\n\nPENTING: Buatlah sebanyak {{ $json.required_texts }} variasi teks overlay yang berbeda.\n\nJawaban harus dalam format JSON dengan struktur:\n{\n  \"options\": [\n    {\n      \"id\": 1,\n      \"text\": \"Teks overlay pertama...\"\n    },\n    {\n      \"id\": 2,\n      \"text\": \"Teks overlay kedua...\"\n    },\n    // ... dan seterusnya sesuai jumlah yang diminta\n  ]\n}\n\nJangan beri penjelasan tambahan atau teks lain. ",
+          "passthroughBinaryImages": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        192
+      ],
+      "id": "df8e6fd6-7890-4225-9ab1-5e286e0641d4",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        416
+      ],
+      "id": "de446c85-7ec5-4538-a5fa-17c687049396",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "9Mu5CrCOX5swHe8J",
+          "name": "Gemini API 11 Agustus"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"options\": [\n    {\n      \"id\": 1,\n      \"text\": \"Muka ambyar gara-gara harsh chemical? Kiyoko: Balikin kulit, alami auto gong!\"\n    },\n    {\n      \"id\": 2,\n      \"text\": \"Udah pasrah sama jerawat/flek? Kiyoko: Kekuatan alam bikin pede lagi. No drama!\"\n    },\n    {\n      \"id\": 3,\n      \"text\": \"Kulit sensitif takut harsh chemical? Kiyoko: Alam yang jaga, kulit auto aman, auto pede. Fix!\"\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1264,
+        416
+      ],
+      "id": "4e2546f6-8fb8-4e44-9127-bc5278d17bb2",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw",
+          "mode": "list",
+          "cachedResultName": "list text overlay",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GE7HjrJ2ijGDGHjh8oT35Arhm9vCUzRR2j3GdT7N0nw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "==ROW()-1",
+            "teks": "={{ $json['output.options'].text }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "teks",
+              "displayName": "teks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1696,
+        304
+      ],
+      "id": "8166a243-b29b-4b1b-b6b5-e28de456c37c",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "gYWXAVroeyiyzRSf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.options",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        304
+      ],
+      "id": "115f2a8a-5567-4fb8-b677-b50def6473fd",
+      "name": "Split Out",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node: Calculate Required Texts\nconst videoMeta = $input.first().json.videoMediaMetadata;\nconst durationMillis = videoMeta && videoMeta.durationMillis \n  ? parseInt(videoMeta.durationMillis, 10) \n  : 0;\n\nconst videoDurationSeconds = Math.floor(durationMillis / 1000); // ms -> detik\nconst segmentDuration = 30; // 30 detik per teks overlay\nconst requiredTexts = videoDurationSeconds > 0 \n  ? Math.ceil(videoDurationSeconds / segmentDuration) \n  : 0;\n\nreturn [\n  {\n    json: {\n      ...items[0].json,\n      video_duration_seconds: videoDurationSeconds,\n      required_texts: requiredTexts\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        304
+      ],
+      "id": "a7b79634-a53e-4f3a-bd8f-2950af379f93",
+      "name": "Code1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search Video Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Video Files": {
+      "main": [
+        [
+          {
+            "node": "Filter Video Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Video Files": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One by One": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Write Input File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Input File": {
+      "main": [
+        [
+          {
+            "node": "FFmpeg Split Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FFmpeg Split Video": {
+      "main": [
+        [
+          {
+            "node": "List Output Files",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Output Files": {
+      "main": [
+        [
+          {
+            "node": "Prepare File List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare File List": {
+      "main": [
+        [
+          {
+            "node": "Set File Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set File Info": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Segment Info": {
+      "main": [
+        [
+          {
+            "node": "Read Segment File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Segment File": {
+      "main": [
+        [
+          {
+            "node": "Get Text Overlay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Text Overlay": {
+      "main": [
+        [
+          {
+            "node": "Prepare Overlay Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Overlay Data": {
+      "main": [
+        [
+          {
+            "node": "Add Text Overlay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Text Overlay": {
+      "main": [
+        [
+          {
+            "node": "Prepare Status Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Status Update": {
+      "main": [
+        [
+          {
+            "node": "Update Text Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Text Status": {
+      "main": [
+        [
+          {
+            "node": "Read Overlay File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Overlay File": {
+      "main": [
+        [
+          {
+            "node": "Upload With Overlay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload With Overlay": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Temp Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Temp Files": {
+      "main": [
+        [
+          {
+            "node": "Check If More Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If More Files": {
+      "main": [
+        [
+          {
+            "node": "Workflow Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Stop on Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Extract Segment Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "938f0e8a-9261-4f45-9b4d-13e6eed994fb",
+  "meta": {
+    "instanceId": "30a542fabf9ae4909bd9aa0c6efc1fe1ebc393cf7a234191691a5d508c2a9bcb"
+  },
+  "id": "XWcmScHlHKLUT1OQ",
+  "tags": []
+}
