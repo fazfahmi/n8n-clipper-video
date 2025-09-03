@@ -30,8 +30,6 @@ It consists of two main parts:
 <img width="2066" height="359" alt="image" src="https://github.com/user-attachments/assets/b6930271-7751-450b-905d-89ad0fb1d3e0" />
 
 
-*(A screenshot of the current workflow in the n8n editor can be added here, showing the progress so far.)*  
-
 ---
 
 ## 🚀 Current Status
